@@ -2,12 +2,27 @@ const Client = struct {
 	ip: std.net.Ipv4,
 	socket: std.net.socket
 	nickname: [32]const u8,
+	connected: bool,
+	failed: bool
 	state: u64 // state is necessery for sync to server
-
+	fn init(){}
+	fn deinit(){}
+	fn connect(self: *Self){
+		self.send(self.nickname);
+		const buffer = self.allocator.alloc(u8, 2);
+		self.readAll(buffer);
+		if(buffer == "OK"){
+			self.connected = true;
+		}else{
+			self.failed = true;
+		}
+	}
+	fn disconnect(){}
 	fn send(self: *Self, message: []const u8){
 		// sends message
 		self.send.sendAll(message);
 	}
+	
 };
 const Server = struct {
 	clients: []Client,
@@ -15,9 +30,48 @@ const Server = struct {
 	title: [128]u8,
 	blacklist: ?[]Client,
 	whitelist: ?[]Client,
-	config: ?Config,
+	config: Config,
+	
+
+	fn check_blacklist(self: *Self, ip: Ipv4) bool{
+		if (self.config.blacklist == false){
+			return true;
+		}
+		for client in self.blacklist {
+			if (client.ip == ip){
+				return false;
+			}
+		}
+		return true;
+	}
+	fn check_whitelist(self: *Self, ip: Ipv4) bool{
+		if (self.config.whitelist == false){
+			return true;
+		}
+		for client in self.whitelist {
+			if (client.ip == ip){
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	fn new_connection(self: *Self, client: *Client) bool{
+		var allowed: bool = true;
+		// check blacklist and whitelist
+		
+		allowed = check_whitelist() && check_blacklist();
+
+		if(allowed) {
+			self.clients.append(client);
+			return true;
+		}
+		return false;
+	}
+
 	// broadcast messageslist to all clients one by one
 	fn broadcast(self: *Self){
+		if (self.recvlist.len == 0) return;
 		for message in self.recvlist {
 			for client in self.clients {
 				client.send(message);
