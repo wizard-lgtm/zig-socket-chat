@@ -1,0 +1,29 @@
+const Client = struct {
+	ip: std.net.Ipv4,
+	socket: std.net.socket
+	nickname: [32]const u8,
+	state: u64 // state is necessery for sync to server
+
+	fn send(self: *Self, message: []const u8){
+		// sends message
+		self.send.sendAll(message);
+	}
+};
+const Server = struct {
+	clients: []Client,
+	room_size: u32,
+	title: [128]u8,
+	blacklist: ?[]Client,
+	whitelist: ?[]Client,
+	config: ?Config,
+	// broadcast messageslist to all clients one by one
+	fn broadcast(self: *Self){
+		for message in self.recvlist {
+			for client in self.clients {
+				client.send(message);
+			}
+			self.recvlist.pop(message);
+		}
+		
+	}
+};
