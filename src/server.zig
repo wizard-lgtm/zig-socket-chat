@@ -2,34 +2,70 @@ const std = @import("std");
 const net = std.net;
 const Client = @import("./client.zig");
 
+const ServerConfig = struct {
+    blacklist_enabled: bool,
+    whitelist_enabled: bool
+};
+
 const Server = struct {
-        clients: []Client,
+        pub const Self = @This();
+
+        allocator: std.mem.Allocator,
+        clients: std.ArrayList(Client),
         room_size: u32,
         title: [128]u8,
-        blacklist: ?[]Client,
-        whitelist: ?[]Client,
-        config: Config,
+        blacklist: ?std.ArrayList(Client),
+        whitelist: ?std.ArrayList(Client),
+        config: ServerConfig,
 
-        // declare self 
-        const self = @This();
+        pub fn init(allocator: std.mem.Allocator,config: ServerConfig)!*Self{
+            var self: *Self = try allocator.create(Self); 
 
+            self.allocator = allocator;
+            self.config = config;
+            self.room_size = room_size;
+            self.title = title;
+            self.clients = std.ArrayList(Client).init(self.allocator); 
 
-        fn check_blacklist(self: *Self, ip: Ipv4) bool{
-                if (self.config.blacklist == false){
+            if(config.blacklist_enabled){
+                self.blacklist = std.ArrayList(Client).init(self.allocator);
+            }else{
+                self.blacklist = null;
+            }
+            if(config.whitelist_enabled){
+                self.blacklist = std.ArrayList(Client).init(self.allocator);
+            }else{
+                self.whitelist = null;
+            }
+            
+            return self;
+        }
+
+        pub fn check_blacklist(self: *Self, ip: net.Ip4Address) bool {
+                // ignore 
+                if (self.config.blacklist_enabled == false){
                         return true;
                 }
-                for client in self.blacklist {
-                        if (client.ip == ip){
-                                return false;
+
+                for (self.blacklist.?.items) |client| {
+                        // Not implemented yet, comparing ipv4 addresses should
+                        // require removing the port section so we need split 
+                        const parsing = std.mem.split(u8, client.address.in, ":");
+                        const iterating_ipv4 = parsing.first(); 
+
+                        if (ip == iteraring_ipv4){
+                                // busted
+                               return false;
                         }
                 }
+                // return true then,
                 return true;
         }
         fn check_whitelist(self: *Self, ip: Ipv4) bool{
                 if (self.config.whitelist == false){
                         return true;
                 }
-                for client in self.whitelist {
+                for (client in self.whitelist) {
                         if (client.ip == ip){
                                 return true;
                         }
